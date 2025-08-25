@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Financiamento</title>
+    <!-- Inclui a fonte Roboto do Google Fonts para um visual moderno e limpo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Variáveis CSS para um tema de cores consistente */
+        :root {
+            --fundo-primario: #f8f9fa;
+            --fundo-secundario: #ffffff;
+            --texto-primario: #212529;
+            --texto-secundario: #6c757d;
+            --cor-acento: #007bff;
+            --cor-acento-hover: #0056b3;
+            --cor-borda: #dee2e6;
+            --sombra-card: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Estilo para todo o corpo da página */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--fundo-primario);
+            color: var(--texto-primario);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Container principal para o conteúdo */
+        .container {
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 20px;
+            background-color: var(--fundo-secundario);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: var(--sombra-card);
+        }
+
+        /* Título da aplicação */
+        h1 {
+            text-align: center;
+            color: var(--texto-primario);
+            margin-bottom: 30px;
+        }
+
+        /* Estilo para os grupos de entrada de dados */
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 700;
+            color: var(--texto-secundario);
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--cor-borda);
+            border-radius: 8px;
+            box-sizing: border-box;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--cor-acento);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+        }
+
+        /* Estilo do botão de simulação */
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--cor-acento);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: var(--cor-acento-hover);
+            transform: translateY(-2px);
+        }
+
+        /* Estilo para o resumo de resultados */
+        .summary {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: var(--fundo-primario);
+            border-left: 5px solid var(--cor-acento);
+            border-radius: 8px;
+            font-weight: 700;
+            line-height: 1.6;
+        }
+
+        /* Estilo para o container da tabela, permitindo scroll horizontal */
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        /* Estilo da tabela de amortização */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px; /* Garante que a tabela não fique esmagada em telas menores */
+            font-size: 14px;
+        }
+        
+        th, td {
+            border: 1px solid var(--cor-borda);
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #e9ecef;
+            font-weight: 700;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f6f6f6;
+        }
+
+        /* Responsividade para telas menores */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Simulador de Financiamento</h1>
+
+        <div class="input-group">
+            <label for="valorFinanciado">Valor Financiado (R$):</label>
+            <input type="number" id="valorFinanciado" value="28000">
+        </div>
+        <div class="input-group">
+            <label for="taxaJuros">Taxa de Juros Mensal (%):</label>
+            <input type="number" id="taxaJuros" value="2.0" step="0.01">
+        </div>
+        <div class="input-group">
+            <label for="prazoMeses">Prazo (em meses):</label>
+            <input type="number" id="prazoMeses" value="48">
+        </div>
+        <div class="input-group">
+            <label for="pagamentoExtra">Pagamento Extra Fixo Mensal (R$):</label>
+            <input type="number" id="pagamentoExtra" value="0">
+        </div>
+
+        <button onclick="gerarSimulacao()">Gerar Simulação</button>
+    </div>
+
+    <div class="container">
+        <div class="summary" id="resumo" style="display: none;"></div>
+        
+        <div class="table-container">
+            <table id="tabelaAmortizacao">
+                <thead>
+                    <tr>
+                        <th>Parcela</th>
+                        <th>Saldo Inicial</th>
+                        <th>Juros</th>
+                        <th>Amortização</th>
+                        <th>Parc. Total</th>
+                        <th>Saldo Final</th>
+                        <th>Pag. Extra</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- A tabela será gerada aqui pelo JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function gerarSimulacao() {
+            // Pega os valores dos campos de entrada
+            const valorFinanciado = parseFloat(document.getElementById('valorFinanciado').value);
+            const taxaJuros = parseFloat(document.getElementById('taxaJuros').value) / 100;
+            const prazoMeses = parseInt(document.getElementById('prazoMeses').value);
+            const pagamentoExtra = parseFloat(document.getElementById('pagamentoExtra').value) || 0;
+
+            const tabelaCorpo = document.querySelector('#tabelaAmortizacao tbody');
+            tabelaCorpo.innerHTML = ''; // Limpa a tabela antes de gerar uma nova
+
+            let saldoDevedor = valorFinanciado;
+            let totalJuros = 0;
+            let totalPago = 0;
+            let numParcelasPagas = 0;
+
+            // Calcula a parcela fixa usando a fórmula da Tabela Price (PMT)
+            const parcelaFixa = (valorFinanciado * taxaJuros) / (1 - Math.pow(1 + taxaJuros, -prazoMeses));
+
+            for (let i = 1; i <= prazoMeses; i++) {
+                // Para o loop se o saldo for zero ou negativo
+                if (saldoDevedor <= 0) {
+                    break;
+                }
+
+                // Calcula os juros e a amortização do mês
+                const juros = saldoDevedor * taxaJuros;
+                const amortizacao = parcelaFixa - juros;
+                
+                // Calcula o saldo devedor após o pagamento e o pagamento extra
+                let saldoDevedorFinal = saldoDevedor - amortizacao - pagamentoExtra;
+
+                // Acumula os totais para o resumo
+                totalJuros += juros;
+                totalPago += parcelaFixa + pagamentoExtra;
+                numParcelasPagas++;
+                
+                // Cria uma nova linha na tabela com os resultados do mês
+                const newRow = tabelaCorpo.insertRow();
+                newRow.innerHTML = `
+                    <td>${i}</td>
+                    <td>R$ ${saldoDevedor.toFixed(2)}</td>
+                    <td>R$ ${juros.toFixed(2)}</td>
+                    <td>R$ ${amortizacao.toFixed(2)}</td>
+                    <td>R$ ${parcelaFixa.toFixed(2)}</td>
+                    <td>R$ ${Math.max(0, saldoDevedorFinal).toFixed(2)}</td>
+                    <td>R$ ${pagamentoExtra.toFixed(2)}</td>
+                `;
+
+                saldoDevedor = saldoDevedorFinal;
+            }
+            
+            // Corrige o último pagamento se houver saldo restante
+            if (saldoDevedor > -0.01) {
+                const ultimaLinha = tabelaCorpo.rows[tabelaCorpo.rows.length - 1];
+                const saldoInicialUltima = parseFloat(ultimaLinha.cells[1].textContent.replace('R$ ', ''));
+                const jurosUltima = saldoInicialUltima * taxaJuros;
+                const pagamentoFinal = saldoInicialUltima + jurosUltima;
+                
+                ultimaLinha.cells[2].textContent = `R$ ${jurosUltima.toFixed(2)}`;
+                ultimaLinha.cells[3].textContent = `R$ ${saldoInicialUltima.toFixed(2)}`;
+                ultimaLinha.cells[4].textContent = `R$ ${pagamentoFinal.toFixed(2)}`;
+                ultimaLinha.cells[5].textContent = `R$ 0.00`;
+                ultimaLinha.cells[6].textContent = `R$ 0.00`;
+
+                // Recalcula totais com o valor final ajustado
+                totalJuros = 0;
+                totalPago = 0;
+                for (let i = 0; i < numParcelasPagas; i++) {
+                    const jurosMes = parseFloat(tabelaCorpo.rows[i].cells[2].textContent.replace('R$ ', ''));
+                    const totalMes = parseFloat(tabelaCorpo.rows[i].cells[4].textContent.replace('R$ ', '')) + parseFloat(tabelaCorpo.rows[i].cells[6].textContent.replace('R$ ', ''));
+                    totalJuros += jurosMes;
+                    totalPago += totalMes;
+                }
+            }
+
+
+            // Exibe o resumo na página
+            const resumoElement = document.getElementById('resumo');
+            resumoElement.style.display = 'block';
+            resumoElement.innerHTML = `
+                Valor da Parcela Fixa: R$ ${parcelaFixa.toFixed(2)}<br>
+                Meses para Quitar: ${numParcelasPagas}<br>
+                Total de Juros Pagos: R$ ${totalJuros.toFixed(2)}<br>
+                Total Pago (com juros): R$ ${totalPago.toFixed(2)}
+            `;
+        }
+    </script>
+</body>
+</html>
