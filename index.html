@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulador de Financiamento</title>
+    <!-- jsPDF e jsPDF-AutoTable para exportação em PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <!-- Inclui a fonte Roboto do Google Fonts para um visual moderno e limpo -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -149,137 +152,359 @@
 <body>
 
     <div class="container">
+        <h1>Calculadora de Taxa de Juros</h1>
+        <div class="input-group">
+            <label for="valorFinanciadoCalc">Valor Financiado (R$):</label>
+            <input type="number" id="valorFinanciadoCalc">
+        </div>
+        <div class="input-group">
+            <label for="valorParcelaCalc">Valor da Parcela (R$):</label>
+            <input type="number" id="valorParcelaCalc">
+        </div>
+        <div class="input-group">
+            <label for="prazoMesesCalc">Prazo (em meses):</label>
+            <input type="number" id="prazoMesesCalc">
+        </div>
+        <button onclick="calcularTaxaDeJuros()">Calcular Taxa</button>
+        <div class="summary" id="resultadoTaxa" style="display: none; margin-top: 15px;"></div>
+    </div>
+
+    <div class="container">
         <h1>Simulador de Financiamento</h1>
 
         <div class="input-group">
             <label for="valorFinanciado">Valor Financiado (R$):</label>
-            <input type="number" id="valorFinanciado" value="28000">
+            <input type="number" id="valorFinanciado">
         </div>
         <div class="input-group">
             <label for="taxaJuros">Taxa de Juros Mensal (%):</label>
-            <input type="number" id="taxaJuros" value="2.0" step="0.01">
+            <input type="number" id="taxaJuros" step="0.01">
         </div>
         <div class="input-group">
             <label for="prazoMeses">Prazo (em meses):</label>
-            <input type="number" id="prazoMeses" value="48">
+            <input type="number" id="prazoMeses">
         </div>
         <div class="input-group">
             <label for="pagamentoExtra">Pagamento Extra Fixo Mensal (R$):</label>
-            <input type="number" id="pagamentoExtra" value="0">
+            <input type="number" id="pagamentoExtra">
         </div>
 
-        <button onclick="gerarSimulacao()">Gerar Simulação</button>
+        <button onclick="gerarSimulacao('price')">Simular PRICE</button>
+        <button onclick="gerarSimulacao('sac')">Simular SAC</button>
+        <button onclick="gerarSimulacao('ambos')" style="margin-top: 10px; background-color: #ffc107; color: #212529;" onmouseover="this.style.backgroundColor='#e0a800'" onmouseout="this.style.backgroundColor='#ffc107'">Comparar PRICE e SAC</button>
+        <button onclick="sugerirAmortizacao()" style="margin-top: 10px; background-color: #28a745;" onmouseover="this.style.backgroundColor='#218838'" onmouseout="this.style.backgroundColor='#28a745'">Sugerir Amortização Inteligente</button>
+        <button id="downloadCSVBtn" onclick="downloadCSV()" style="margin-top: 10px; background-color: #17a2b8;" onmouseover="this.style.backgroundColor='#138496'" onmouseout="this.style.backgroundColor='#17a2b8'">Download CSV</button>
+        <button id="downloadPDFBtn" onclick="downloadPDF()" style="margin-top: 10px; background-color: #dc3545;" onmouseover="this.style.backgroundColor='#c82333'" onmouseout="this.style.backgroundColor='#dc3545'">Download PDF</button>
     </div>
 
-    <div class="container">
-        <div class="summary" id="resumo" style="display: none;"></div>
-        
-        <div class="table-container">
-            <table id="tabelaAmortizacao">
-                <thead>
-                    <tr>
-                        <th>Parcela</th>
-                        <th>Saldo Inicial</th>
-                        <th>Juros</th>
-                        <th>Amortização</th>
-                        <th>Parc. Total</th>
-                        <th>Saldo Final</th>
-                        <th>Pag. Extra</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- A tabela será gerada aqui pelo JavaScript -->
-                </tbody>
-            </table>
+    <div class="container" id="sugestao-container" style="display: none;">
+        <!-- As sugestões serão inseridas aqui -->
+    </div>
+
+    <div id="simulacoes-container" style="display: flex; flex-wrap: wrap; justify-content: space-between; width: 100%; max-width: 1820px;">
+        <div class="container simulacao-box" id="price-container" style="display: none; flex: 1; min-width: 45%;">
+            <h2>Sistema PRICE</h2>
+            <div class="summary" id="resumo-price"></div>
+            <div class="table-container">
+                <table id="tabelaAmortizacaoPrice">
+                    <thead>
+                        <tr>
+                            <th>Parcela</th>
+                            <th>Saldo Inicial</th>
+                            <th>Juros</th>
+                            <th>Amortização</th>
+                            <th>Parc. Total</th>
+                            <th>Saldo Final</th>
+                            <th>Pag. Extra</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="container simulacao-box" id="sac-container" style="display: none; flex: 1; min-width: 45%;">
+            <h2>Sistema SAC</h2>
+            <div class="summary" id="resumo-sac"></div>
+            <div class="table-container">
+                <table id="tabelaAmortizacaoSac">
+                    <thead>
+                        <tr>
+                            <th>Parcela</th>
+                            <th>Saldo Inicial</th>
+                            <th>Juros</th>
+                            <th>Amortização</th>
+                            <th>Parc. Total</th>
+                            <th>Saldo Final</th>
+                            <th>Pag. Extra</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
-        function gerarSimulacao() {
-            // Pega os valores dos campos de entrada
+        function calcularTaxaDeJuros() {
+            const valorFinanciado = parseFloat(document.getElementById('valorFinanciadoCalc').value);
+            const valorParcela = parseFloat(document.getElementById('valorParcelaCalc').value);
+            const prazoMeses = parseInt(document.getElementById('prazoMesesCalc').value);
+            const resultadoTaxaEl = document.getElementById('resultadoTaxa');
+
+            if (!valorFinanciado || !valorParcela || !prazoMeses) {
+                resultadoTaxaEl.style.display = 'block';
+                resultadoTaxaEl.innerHTML = 'Por favor, preencha todos os campos para calcular a taxa.';
+                return;
+            }
+
+            let taxaMin = 0;
+            let taxaMax = 1;
+            let taxaEstimada;
+            let maxIteracoes = 100;
+            let iteracao = 0;
+            let precisao = 0.000001;
+            let valorPresente = 0;
+
+            do {
+                taxaEstimada = (taxaMin + taxaMax) / 2;
+                if (taxaEstimada === 0) {
+                    valorPresente = Infinity; 
+                } else {
+                    valorPresente = valorParcela * (1 - Math.pow(1 + taxaEstimada, -prazoMeses)) / taxaEstimada;
+                }
+
+                if (valorPresente > valorFinanciado) {
+                    taxaMin = taxaEstimada;
+                } else {
+                    taxaMax = taxaEstimada;
+                }
+                iteracao++;
+            } while (Math.abs(valorPresente - valorFinanciado) > precisao && iteracao < maxIteracoes);
+
+            if (iteracao >= maxIteracoes) {
+                resultadoTaxaEl.style.display = 'block';
+                resultadoTaxaEl.innerHTML = 'Não foi possível calcular a taxa. Verifique os valores inseridos.';
+            } else {
+                const taxaPercentual = taxaEstimada * 100;
+                document.getElementById('taxaJuros').value = taxaPercentual.toFixed(2);
+                document.getElementById('valorFinanciado').value = valorFinanciado;
+                document.getElementById('prazoMeses').value = prazoMeses;
+
+                resultadoTaxaEl.style.display = 'block';
+                resultadoTaxaEl.innerHTML = `Taxa de Juros Mensal Calculada: <strong>${taxaPercentual.toFixed(4)}%</strong>. Os valores foram preenchidos no simulador abaixo.`;
+            }
+        }
+
+        function simularPrice(valorFinanciado, taxaJuros, prazoMeses, pagamentoExtra) {
+            let saldoDevedor = valorFinanciado;
+            let totalJuros = 0;
+            let totalPago = 0;
+            let numParcelasPagas = 0;
+            const parcelaFixa = (valorFinanciado * taxaJuros) / (1 - Math.pow(1 + taxaJuros, -prazoMeses));
+            const historico = [];
+
+            for (let i = 1; i <= prazoMeses; i++) {
+                if (saldoDevedor <= 0.01) break;
+
+                const juros = saldoDevedor * taxaJuros;
+                let amortizacao = parcelaFixa - juros;
+                let pagamentoExtraAtual = pagamentoExtra;
+
+                if (saldoDevedor < (amortizacao + pagamentoExtraAtual)) {
+                    if (saldoDevedor < amortizacao) {
+                        amortizacao = saldoDevedor;
+                        pagamentoExtraAtual = 0;
+                    } else {
+                        pagamentoExtraAtual = saldoDevedor - amortizacao;
+                    }
+                }
+
+                const saldoDevedorFinal = saldoDevedor - amortizacao - pagamentoExtraAtual;
+                const parcelaTotalDoMes = (parcelaFixa - juros) + juros + pagamentoExtraAtual;
+
+                totalJuros += juros;
+                totalPago += parcelaTotalDoMes;
+                numParcelasPagas++;
+
+                historico.push({
+                    parcela: i,
+                    saldoInicial: saldoDevedor,
+                    juros: juros,
+                    amortizacao: amortizacao,
+                    parcelaTotal: parcelaFixa + pagamentoExtraAtual,
+                    saldoFinal: saldoDevedorFinal,
+                    pagamentoExtra: pagamentoExtraAtual
+                });
+
+                saldoDevedor = saldoDevedorFinal;
+            }
+
+            return { totalJuros, totalPago, numParcelasPagas, parcelaFixa, historico };
+        }
+
+        function simularSac(valorFinanciado, taxaJuros, prazoMeses, pagamentoExtra) {
+            let saldoDevedor = valorFinanciado;
+            let totalJuros = 0;
+            let totalPago = 0;
+            let numParcelasPagas = 0;
+            const amortizacao = valorFinanciado / prazoMeses;
+            const historico = [];
+
+            for (let i = 1; i <= prazoMeses; i++) {
+                if (saldoDevedor <= 0.01) break;
+
+                const juros = saldoDevedor * taxaJuros;
+                let pagamentoExtraAtual = pagamentoExtra;
+                let amortizacaoAtual = amortizacao;
+
+                if (saldoDevedor < (amortizacaoAtual + pagamentoExtraAtual + juros)) {
+                    amortizacaoAtual = saldoDevedor - juros;
+                    if (saldoDevedor < juros) {
+                        amortizacaoAtual = 0;
+                        pagamentoExtraAtual = 0;
+                    } else if (saldoDevedor - juros < amortizacao) {
+                        pagamentoExtraAtual = 0;
+                    } else {
+                        pagamentoExtraAtual = saldoDevedor - juros - amortizacaoAtual;
+                    }
+                }
+
+                const parcelaTotal = amortizacaoAtual + juros + pagamentoExtraAtual;
+                const saldoDevedorFinal = saldoDevedor - amortizacaoAtual - pagamentoExtraAtual;
+
+                totalJuros += juros;
+                totalPago += parcelaTotal;
+                numParcelasPagas++;
+
+                historico.push({
+                    parcela: i,
+                    saldoInicial: saldoDevedor,
+                    juros: juros,
+                    amortizacao: amortizacaoAtual,
+                    parcelaTotal: parcelaTotal,
+                    saldoFinal: saldoDevedorFinal,
+                    pagamentoExtra: pagamentoExtraAtual
+                });
+
+                saldoDevedor = saldoDevedorFinal;
+            }
+
+            return { totalJuros, totalPago, numParcelasPagas, historico };
+        }
+
+        function gerarSimulacao(tipo) {
             const valorFinanciado = parseFloat(document.getElementById('valorFinanciado').value);
             const taxaJuros = parseFloat(document.getElementById('taxaJuros').value) / 100;
             const prazoMeses = parseInt(document.getElementById('prazoMeses').value);
             const pagamentoExtra = parseFloat(document.getElementById('pagamentoExtra').value) || 0;
 
-            const tabelaCorpo = document.querySelector('#tabelaAmortizacao tbody');
-            tabelaCorpo.innerHTML = ''; // Limpa a tabela antes de gerar uma nova
+            document.getElementById('price-container').style.display = 'none';
+            document.getElementById('sac-container').style.display = 'none';
 
-            let saldoDevedor = valorFinanciado;
-            let totalJuros = 0;
-            let totalPago = 0;
-            let numParcelasPagas = 0;
+            if (tipo === 'price' || tipo === 'ambos') {
+                const resultado = simularPrice(valorFinanciado, taxaJuros, prazoMeses, pagamentoExtra);
+                preencherTabela('Price', resultado, valorFinanciado);
+                document.getElementById('price-container').style.display = 'block';
+            }
 
-            // Calcula a parcela fixa usando a fórmula da Tabela Price (PMT)
-            const parcelaFixa = (valorFinanciado * taxaJuros) / (1 - Math.pow(1 + taxaJuros, -prazoMeses));
+            if (tipo === 'sac' || tipo === 'ambos') {
+                const resultado = simularSac(valorFinanciado, taxaJuros, prazoMeses, pagamentoExtra);
+                preencherTabela('Sac', resultado, valorFinanciado);
+                document.getElementById('sac-container').style.display = 'block';
+            }
+        }
 
-            for (let i = 1; i <= prazoMeses; i++) {
-                // Para o loop se o saldo for zero ou negativo
-                if (saldoDevedor <= 0) {
-                    break;
-                }
+        function preencherTabela(sufixo, resultado, valorFinanciado) {
+            const tabelaCorpo = document.querySelector(`#tabelaAmortizacao${sufixo} tbody`);
+            tabelaCorpo.innerHTML = '';
 
-                // Calcula os juros e a amortização do mês
-                const juros = saldoDevedor * taxaJuros;
-                const amortizacao = parcelaFixa - juros;
-                
-                // Calcula o saldo devedor após o pagamento e o pagamento extra
-                let saldoDevedorFinal = saldoDevedor - amortizacao - pagamentoExtra;
-
-                // Acumula os totais para o resumo
-                totalJuros += juros;
-                totalPago += parcelaFixa + pagamentoExtra;
-                numParcelasPagas++;
-                
-                // Cria uma nova linha na tabela com os resultados do mês
+            resultado.historico.forEach(linha => {
                 const newRow = tabelaCorpo.insertRow();
                 newRow.innerHTML = `
-                    <td>${i}</td>
-                    <td>R$ ${saldoDevedor.toFixed(2)}</td>
-                    <td>R$ ${juros.toFixed(2)}</td>
-                    <td>R$ ${amortizacao.toFixed(2)}</td>
-                    <td>R$ ${parcelaFixa.toFixed(2)}</td>
-                    <td>R$ ${Math.max(0, saldoDevedorFinal).toFixed(2)}</td>
-                    <td>R$ ${pagamentoExtra.toFixed(2)}</td>
+                    <td>${linha.parcela}</td>
+                    <td>R$ ${linha.saldoInicial.toFixed(2)}</td>
+                    <td>R$ ${linha.juros.toFixed(2)}</td>
+                    <td>R$ ${linha.amortizacao.toFixed(2)}</td>
+                    <td>R$ ${linha.parcelaTotal.toFixed(2)}</td>
+                    <td>R$ ${Math.max(0, linha.saldoFinal).toFixed(2)}</td>
+                    <td>R$ ${linha.pagamentoExtra.toFixed(2)}</td>
                 `;
+            });
 
-                saldoDevedor = saldoDevedorFinal;
+            const resumoElement = document.getElementById(`resumo-${sufixo.toLowerCase()}`);
+            resumoElement.innerHTML = `
+                Valor Financiado: R$ ${valorFinanciado.toFixed(2)}<br>
+                ${resultado.parcelaFixa ? `Valor da Parcela Fixa: R$ ${resultado.parcelaFixa.toFixed(2)}<br>` : ''}
+                Meses para Quitar: ${resultado.numParcelasPagas}<br>
+                Total de Juros Pagos: R$ ${resultado.totalJuros.toFixed(2)}<br>
+                Total Pago (com juros): R$ ${resultado.totalPago.toFixed(2)}
+            `;
+        }
+
+        function sugerirAmortizacao() {
+            const valorFinanciado = parseFloat(document.getElementById('valorFinanciado').value);
+            const taxaJuros = parseFloat(document.getElementById('taxaJuros').value) / 100;
+            const prazoMeses = parseInt(document.getElementById('prazoMeses').value);
+            const sugestaoContainer = document.getElementById('sugestao-container');
+
+            if (!valorFinanciado || !taxaJuros || !prazoMeses) {
+                sugestaoContainer.style.display = 'block';
+                sugestaoContainer.innerHTML = 'Por favor, preencha os campos de valor, taxa e prazo para receber uma sugestão.';
+                return;
             }
-            
-            // Corrige o último pagamento se houver saldo restante
-            if (saldoDevedor > -0.01) {
-                const ultimaLinha = tabelaCorpo.rows[tabelaCorpo.rows.length - 1];
-                const saldoInicialUltima = parseFloat(ultimaLinha.cells[1].textContent.replace('R$ ', ''));
-                const jurosUltima = saldoInicialUltima * taxaJuros;
-                const pagamentoFinal = saldoInicialUltima + jurosUltima;
-                
-                ultimaLinha.cells[2].textContent = `R$ ${jurosUltima.toFixed(2)}`;
-                ultimaLinha.cells[3].textContent = `R$ ${saldoInicialUltima.toFixed(2)}`;
-                ultimaLinha.cells[4].textContent = `R$ ${pagamentoFinal.toFixed(2)}`;
-                ultimaLinha.cells[5].textContent = `R$ 0.00`;
-                ultimaLinha.cells[6].textContent = `R$ 0.00`;
 
-                // Recalcula totais com o valor final ajustado
-                totalJuros = 0;
-                totalPago = 0;
-                for (let i = 0; i < numParcelasPagas; i++) {
-                    const jurosMes = parseFloat(tabelaCorpo.rows[i].cells[2].textContent.replace('R$ ', ''));
-                    const totalMes = parseFloat(tabelaCorpo.rows[i].cells[4].textContent.replace('R$ ', '')) + parseFloat(tabelaCorpo.rows[i].cells[6].textContent.replace('R$ ', ''));
-                    totalJuros += jurosMes;
-                    totalPago += totalMes;
+            const base = simularPrice(valorFinanciado, taxaJuros, prazoMeses, 0);
+            const parcelaFixa = base.parcelaFixa;
+            
+            const cenarios = [
+                { nome: 'Conservador', percentual: 0.15 },
+                { nome: 'Moderado', percentual: 0.30 },
+                { nome: 'Agressivo', percentual: 0.50 },
+                { nome: 'Ultra Agressivo', percentual: 0.70 }
+            ];
+
+            let resultadosHTML = '<h2>✨ Cenários de Amortização Inteligente ✨</h2>';
+            resultadosHTML += '<p>Analisamos diferentes estratégias de amortização com base no valor da sua parcela (R$ ' + parcelaFixa.toFixed(2) + '). Escolha um plano e aplique-o à simulação:</p>';
+
+            for (const cenario of cenarios) {
+                const pagamentoExtra = parcelaFixa * cenario.percentual;
+                const resultadoSimulacao = simularPrice(valorFinanciado, taxaJuros, prazoMeses, pagamentoExtra);
+                const economiaJuros = base.totalJuros - resultadoSimulacao.totalJuros;
+                const mesesEconomizados = base.numParcelasPagas - resultadoSimulacao.numParcelasPagas;
+
+                if (economiaJuros > 0) {
+                    resultadosHTML += `
+                        <div class="summary" style="margin-top: 15px; border-left-color: #28a745; padding-bottom: 20px;">
+                            <strong>Plano ${cenario.nome}: Amortizar R$ ${pagamentoExtra.toFixed(2)} / mês</strong>
+                            <ul>
+                                <li>Você economiza <strong>R$ ${economiaJuros.toFixed(2)}</strong> em juros.</li>
+                                <li>Você quita <strong>${mesesEconomizados} meses antes</strong>.</li>
+                            </ul>
+                            <button onclick="aplicarCenario(${pagamentoExtra})" style="width: auto; padding: 8px 16px; font-size: 14px; margin-top: 10px;">Aplicar Cenário</button>
+                        </div>
+                    `;
                 }
             }
 
+            sugestaoContainer.style.display = 'block';
+            sugestaoContainer.innerHTML = resultadosHTML;
+        }
 
-            // Exibe o resumo na página
-            const resumoElement = document.getElementById('resumo');
-            resumoElement.style.display = 'block';
-            resumoElement.innerHTML = `
-                Valor da Parcela Fixa: R$ ${parcelaFixa.toFixed(2)}<br>
-                Meses para Quitar: ${numParcelasPagas}<br>
-                Total de Juros Pagos: R$ ${totalJuros.toFixed(2)}<br>
-                Total Pago (com juros): R$ ${totalPago.toFixed(2)}
-            `;
+        function aplicarCenario(valor) {
+            document.getElementById('pagamentoExtra').value = valor.toFixed(2);
+            gerarSimulacao('price');
+            document.getElementById('price-container').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function downloadCSV() {
+            // Implementação futura para download de CSV (pode ser adaptada para escolher a tabela)
+            alert('Função de download de CSV precisa ser adaptada para a nova estrutura.');
+        }
+
+        function downloadPDF() {
+            // Implementação futura para download de PDF (pode ser adaptada para escolher a tabela)
+            alert('Função de download de PDF precisa ser adaptada para a nova estrutura.');
         }
     </script>
 </body>
